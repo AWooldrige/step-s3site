@@ -108,3 +108,14 @@ def upload_dir_to_s3(local_directory, bucket_name, access_key_id,
     for filepath in files:
         _upload_file_to_s3(join(local_directory, filepath), s3_bucket,
                            filepath, config)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    e = extract_wercker_env_vars()
+    try:
+        local_directory = join(e["root_dir"], e["source_dir"])
+    except KeyError:
+        local_directory = e["root_dir"]
+    upload_dir_to_s3(local_directory, e["bucket_region"], e["bucket_name"],
+                     e["access_key_id"], e["secret_access_key"])
