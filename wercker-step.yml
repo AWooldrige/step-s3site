@@ -1,3 +1,3 @@
 name: s3sitedeploy
-version: 0.1.0
+version: 0.1.1
 description: Deploy to S3 bucket configured for static website hosting. Allows for configuration of Cache-Control and performs gzipping if required.
