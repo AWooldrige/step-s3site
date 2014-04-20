@@ -40,7 +40,7 @@ def _list_all_files_in_dir(dir):
 
 def _get_s3site_config(dir):
     try:
-        with open(join(dir, "s3site.config")) as config:
+        with open(join(dir, "s3sitedeploy.json")) as config:
             return load(config)
     except IOError:
         return {
