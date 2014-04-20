@@ -1,0 +1,4 @@
+boto
+mock
+nose
+flake8

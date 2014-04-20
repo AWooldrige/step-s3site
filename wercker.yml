@@ -1,0 +1,7 @@
+box: wercker/python
+build:
+  steps:
+    - pip-install
+    - script:
+        name: s3sitedeploy Tests
+        code: make test
