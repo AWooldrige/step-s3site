@@ -13,18 +13,18 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
 
     def setUp(self):
         environ["WERCKER_SOURCE_DIR"] = "/test/path"
-        environ["WERCKER_S3SITEDEPLOY_SOURCE_DIR"] = "public_html/"
+        environ["WERCKER_S3SITEDEPLOY_DEPLOY_DIR"] = "public_html/"
         environ["WERCKER_S3SITEDEPLOY_BUCKET_NAME"] = "site.com-bucket-13819"
         environ["WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID"] = "fj2038fd*940$$F"
         environ["WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY"] = ")39dj1'1jfkd"
 
     def test_correct_mappings(self):
         expected = {
-            "WERCKER_SOURCE_DIR": "/test/path",
-            "WERCKER_S3SITEDEPLOY_SOURCE_DIR": "public_html/",
-            "WERCKER_S3SITEDEPLOY_BUCKET_NAME": "site.com-bucket-13819",
-            "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID": "fj2038fd*940$$F",
-            "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY": ")39dj1'1jfkd"
+            "source_dir": "/test/path",
+            "deploy_dir": "public_html/",
+            "bucket_name": "site.com-bucket-13819",
+            "access_key_id": "fj2038fd*940$$F",
+            "secret_access_key": ")39dj1'1jfkd"
         }
         self.assertEqual(expected, extract_wercker_env_vars())
 
@@ -37,12 +37,12 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
             self.assertRaises(KeyError, extract_wercker_env_vars)
 
     def test_not_required_fields(self):
-        del environ["WERCKER_S3SITEDEPLOY_SOURCE_DIR"]
+        del environ["WERCKER_S3SITEDEPLOY_DEPLOY_DIR"]
         expected = {
-            "WERCKER_SOURCE_DIR": "/test/path",
-            "WERCKER_S3SITEDEPLOY_BUCKET_NAME": "site.com-bucket-13819",
-            "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID": "fj2038fd*940$$F",
-            "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY": ")39dj1'1jfkd"
+            "source_dir": "/test/path",
+            "bucket_name": "site.com-bucket-13819",
+            "access_key_id": "fj2038fd*940$$F",
+            "secret_access_key": ")39dj1'1jfkd"
         }
         self.assertEqual(expected, extract_wercker_env_vars())
 

@@ -15,14 +15,14 @@ log = logging.getLogger(__name__)
 def extract_wercker_env_vars():
     extracted = {}
     expected_env_vars = [
-        ("root_dir", "WERCKER_SOURCE_DIR", True),
-        ("source_dir", "WERCKER_S3SITEDEPLOY_SOURCE_DIR", False),
+        ("source_dir", "WERCKER_SOURCE_DIR", True),
+        ("deploy_dir", "WERCKER_S3SITEDEPLOY_DEPLOY_DIR", False),
         ("bucket_name", "WERCKER_S3SITEDEPLOY_BUCKET_NAME", True),
         ("access_key_id", "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID", True),
         ("secret_access_key", "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY", True)]
     for map_to, key, required in expected_env_vars:
         try:
-            extracted[key] = environ[key]
+            extracted[map_to] = environ[key]
         except KeyError:
             if required:
                 log.error("The environment variable '%s' is required", key)
@@ -111,11 +111,11 @@ def upload_dir_to_s3(local_directory, bucket_name, access_key_id,
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     e = extract_wercker_env_vars()
     try:
-        local_directory = e["source_dir"]
+        local_directory = join(e["source_dir"], e["deploy_dir"])
     except KeyError:
-        local_directory = e["root_dir"]
+        local_directory = e["source_dir"]
     upload_dir_to_s3(local_directory, e["bucket_region"], e["bucket_name"],
                      e["access_key_id"], e["secret_access_key"])
