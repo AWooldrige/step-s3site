@@ -60,6 +60,17 @@ def _cache_control_for_filepath(filepath, cache_config):
     return "max-age=60, public"
 
 
+def _append_charset(content_type):
+    """
+    Files stored in S3 really should be in UTF-8. For this reason, I've not
+    made it configurable. UTF-8 encoding assumed for all text/* files
+    """
+    if content_type.startswith("text/"):
+        return "{0}; charset=UTF-8".format(content_type)
+    else:
+        return content_type
+
+
 def _compress_the_file(filepath):
     """
     TODO: Make this function usable with a 'with' statement, which deletes it
@@ -80,7 +91,7 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
               content_type, content_encoding, filepath)
     headers = {
         "x-amz-acl": "public-read",
-        "Content-Type": content_type,
+        "Content-Type": _append_charset(content_type),
         "Cache-Control": _cache_control_for_filepath(
             destination_key, site_config["headers"])}
     if content_type in site_config["gzip"] and not content_encoding:

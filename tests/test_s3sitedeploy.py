@@ -6,7 +6,7 @@ import gzip
 
 from s3sitedeploy import (_cache_control_for_filepath,  _list_all_files_in_dir,
                           _upload_file_to_s3, _compress_the_file,
-                          extract_wercker_env_vars)
+                          extract_wercker_env_vars, _append_charset)
 
 
 class ExtractWerckerEnvVarsTestCase(TestCase):
@@ -109,6 +109,27 @@ class CacheControlForFilepathTestCase(TestCase):
                           "test.txt", self.conf)
 
 
+class AppendCharsetTestCase(TestCase):
+
+    def test_multiple_text_files(self):
+        examples = {"text/csv", "text/encaprtp", "text/html", "text/jcr-cnd",
+                    "text/mizar", "text/prs.lines.tag", "text/rtf",
+                    "text/rtp-enc-aescm128", "text/vnd.debian.copyright",
+                    "text/vnd.IPTC.NITF"}
+        expected = {"{0}; charset=UTF-8".format(ct) for ct in examples}
+        actual = {_append_charset(ct) for ct in examples}
+        self.assertEqual(expected, actual)
+
+    def test_multiple_non_text_files(self):
+        examples = {"application/atom+xml", "application/javascript",
+                    "application/pdf", "application/font-woff", "audio/mpeg",
+                    "audio/vorbis", "image/jpeg", "image/svg+xml",
+                    "video/quicktime", "video/avi",
+                    "application/vnd.oasis.opendocument.text"}
+        actual = {_append_charset(ct) for ct in examples}
+        self.assertEqual(examples, actual)
+
+
 class ListAllFilesInDirTestCase(TestCase):
 
     def test_non_existant_directory(self):
@@ -173,7 +194,7 @@ class UploadFileToS3TestCase(TestCase):
         mock_compress_the_file.return_value = "example-file.gz"
         expected_headers = {
             "x-amz-acl": "public-read",
-            "Content-Type": "text/html",
+            "Content-Type": "text/html; charset=UTF-8",
             "Content-Encoding": "gzip",
             "Cache-Control": "max-age=60"}
         _upload_file_to_s3(
@@ -190,7 +211,7 @@ class UploadFileToS3TestCase(TestCase):
     def test_gzipping_not_performed_if_file_is_already_gzipped(self, mock_key):
         expected_headers = {
             "x-amz-acl": "public-read",
-            "Content-Type": "text/html",
+            "Content-Type": "text/html; charset=UTF-8",
             "Content-Encoding": "gzip",
             "Cache-Control": "max-age=60"}
         _upload_file_to_s3(
