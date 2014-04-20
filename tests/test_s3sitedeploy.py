@@ -12,7 +12,7 @@ from s3sitedeploy import (_cache_control_for_filepath,  _list_all_files_in_dir,
 class ExtractWerckerEnvVarsTestCase(TestCase):
 
     def setUp(self):
-        environ["WERCKER_ROOT"] = "/test/path"
+        environ["WERCKER_SOURCE_DIR"] = "/test/path"
         environ["WERCKER_S3SITEDEPLOY_SOURCE_DIR"] = "public_html/"
         environ["WERCKER_S3SITEDEPLOY_BUCKET_NAME"] = "site.com-bucket-13819"
         environ["WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID"] = "fj2038fd*940$$F"
@@ -20,7 +20,7 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
 
     def test_correct_mappings(self):
         expected = {
-            "WERCKER_ROOT": "/test/path",
+            "WERCKER_SOURCE_DIR": "/test/path",
             "WERCKER_S3SITEDEPLOY_SOURCE_DIR": "public_html/",
             "WERCKER_S3SITEDEPLOY_BUCKET_NAME": "site.com-bucket-13819",
             "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID": "fj2038fd*940$$F",
@@ -29,7 +29,7 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
         self.assertEqual(expected, extract_wercker_env_vars())
 
     def test_required_fields(self):
-        required = {"WERCKER_ROOT", "WERCKER_S3SITEDEPLOY_BUCKET_NAME",
+        required = {"WERCKER_SOURCE_DIR", "WERCKER_S3SITEDEPLOY_BUCKET_NAME",
                     "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID",
                     "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY"}
         for key in required:
@@ -39,7 +39,7 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
     def test_not_required_fields(self):
         del environ["WERCKER_S3SITEDEPLOY_SOURCE_DIR"]
         expected = {
-            "WERCKER_ROOT": "/test/path",
+            "WERCKER_SOURCE_DIR": "/test/path",
             "WERCKER_S3SITEDEPLOY_BUCKET_NAME": "site.com-bucket-13819",
             "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID": "fj2038fd*940$$F",
             "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY": ")39dj1'1jfkd"
