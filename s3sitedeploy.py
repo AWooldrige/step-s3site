@@ -85,6 +85,7 @@ def _compress_the_file(filepath):
 
 
 def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
+    gzip_exceptions = ["robots.txt"]
     key = Key(bucket=bucket, name=destination_key)
     content_type, content_encoding = guess_type(filepath)
     log.debug("Guessed content type '%s' and encoding '%s' for '%s'",
@@ -94,7 +95,8 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
         "Content-Type": _append_charset(content_type),
         "Cache-Control": _cache_control_for_filepath(
             destination_key, site_config["headers"])}
-    if content_type in site_config["gzip"] and not content_encoding:
+    if (content_type in site_config["gzip"] and not content_encoding and
+       destination_key not in gzip_exceptions):
         log.debug("Content type '%s' is in the list of ones to gzip. File %s "
                   "will be gzipped then uploaded", content_type, filepath)
         headers["Content-Encoding"] = "gzip"
