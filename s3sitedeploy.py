@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 def extract_wercker_env_vars():
     extracted = {}
     expected_env_vars = [
-        ("root_dir", "WERCKER_ROOT", True),
+        ("root_dir", "WERCKER_SOURCE_DIR", True),
         ("source_dir", "WERCKER_S3SITEDEPLOY_SOURCE_DIR", False),
         ("bucket_name", "WERCKER_S3SITEDEPLOY_BUCKET_NAME", True),
         ("access_key_id", "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID", True),
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     e = extract_wercker_env_vars()
     try:
-        local_directory = join(e["root_dir"], e["source_dir"])
+        local_directory = e["source_dir"]
     except KeyError:
         local_directory = e["root_dir"]
     upload_dir_to_s3(local_directory, e["bucket_region"], e["bucket_name"],
