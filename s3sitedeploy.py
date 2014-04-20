@@ -117,5 +117,5 @@ if __name__ == "__main__":
         local_directory = join(e["source_dir"], e["deploy_dir"])
     except KeyError:
         local_directory = e["source_dir"]
-    upload_dir_to_s3(local_directory, e["bucket_region"], e["bucket_name"],
-                     e["access_key_id"], e["secret_access_key"])
+    upload_dir_to_s3(local_directory, e["bucket_name"], e["access_key_id"],
+                     e["secret_access_key"])
