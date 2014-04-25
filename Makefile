@@ -12,3 +12,4 @@ venv/bin/activate: requirements.txt
 
 clean::
 	rm -rf venv
+	find . -name '*.pyc' -delete

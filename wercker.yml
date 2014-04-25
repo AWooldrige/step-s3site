@@ -5,3 +5,6 @@ build:
     - script:
         name: s3sitedeploy Tests
         code: make test
+    - script:
+        name: Cleanup
+        code: make clean
