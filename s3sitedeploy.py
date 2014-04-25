@@ -27,7 +27,8 @@ def extract_wercker_env_vars():
             if required:
                 log.error("The environment variable '%s' is required", key)
                 raise
-    log.debug("Extracted Wercker environment variables: %s", str(extracted))
+    log.debug("Extracted Wercker environment variables successfully (not"
+              "printing as they contain security credentials)")
     return extracted
 
 
@@ -109,7 +110,11 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
                   content_type, filepath)
         if content_encoding:
             headers["Content-Encoding"] = content_encoding
-        return key.set_contents_from_filename(filepath, headers=headers)
+        bytes_written = key.set_contents_from_filename(filepath,
+                                                       headers=headers)
+        log.debug("Uploaded '%s' (transmitted %d bytes)", destination_key,
+                  bytes_written)
+        return bytes_written
 
 
 def upload_dir_to_s3(local_directory, bucket_name, access_key_id,
