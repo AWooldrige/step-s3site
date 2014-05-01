@@ -19,7 +19,8 @@ def extract_wercker_env_vars():
         ("deploy_dir", "WERCKER_S3SITEDEPLOY_DEPLOY_DIR", False),
         ("bucket_name", "WERCKER_S3SITEDEPLOY_BUCKET_NAME", True),
         ("access_key_id", "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID", True),
-        ("secret_access_key", "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY", True)]
+        ("secret_access_key", "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY", True),
+        ("log_level", "WERCKER_S3SITEDEPLOY_LOG_LEVEL", False)]
     for map_to, key, required in expected_env_vars:
         try:
             extracted[map_to] = environ[key]
@@ -50,17 +51,6 @@ def _get_s3site_config(dir):
                      "application/javascript"]}
 
 
-def _cache_control_for_filepath(filepath, cache_config):
-    for directive in reversed(cache_config):
-        path = compile(directive["path"])
-        if path.match(filepath):
-            log.debug(
-                "Filepath %s matched expression %s, applying Cache-Control %s",
-                filepath, str(directive["path"]), directive["Cache-Control"])
-            return directive["Cache-Control"]
-    return "max-age=60, public"
-
-
 def _append_charset(content_type):
     """
     Files stored in S3 really should be in UTF-8. For this reason, I've not
@@ -85,36 +75,48 @@ def _compress_the_file(filepath):
     return compressed_filepath
 
 
+def _get_object_directives(object_path, object_specific_config):
+    for directive in object_specific_config:
+        path = compile(directive["path"])
+        if path.match(object_path):
+            log.debug(
+                "Object path %s matched expression %s, directives: %s",
+                object_path, str(directive["path"]), str(directive))
+            return directive
+    return None
+
+
 def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
-    gzip_exceptions = ["robots.txt"]
     key = Key(bucket=bucket, name=destination_key)
     content_type, content_encoding = guess_type(filepath)
     log.debug("Guessed content type '%s' and encoding '%s' for '%s'",
               content_type, content_encoding, filepath)
+    directives = _get_object_directives(destination_key,
+                                        site_config["object_specific"])
     headers = {
         "x-amz-acl": "public-read",
         "Content-Type": _append_charset(content_type),
-        "Cache-Control": _cache_control_for_filepath(
-            destination_key, site_config["headers"])}
-    if (content_type in site_config["gzip"] and not content_encoding and
-       destination_key not in gzip_exceptions):
-        log.debug("Content type '%s' is in the list of ones to gzip. File %s "
-                  "will be gzipped then uploaded", content_type, filepath)
-        headers["Content-Encoding"] = "gzip"
-        compressed_filepath = _compress_the_file(filepath)
-        return key.set_contents_from_filename(compressed_filepath,
-                                              headers=headers)
+        "Cache-Control": "no-cache"}
+    if content_encoding:
+        headers["Content-Encoding"] = content_encoding
     else:
-        log.debug("Content type '%s' not int the list of ones to gzip (or %s "
-                  "is already gzip encoded, about to upload as is",
-                  content_type, filepath)
-        if content_encoding:
-            headers["Content-Encoding"] = content_encoding
-        bytes_written = key.set_contents_from_filename(filepath,
-                                                       headers=headers)
-        log.debug("Uploaded '%s' (transmitted %d bytes)", destination_key,
-                  bytes_written)
-        return bytes_written
+        should_gzip = content_type in site_config["gzip"]
+        try:
+            # Allow for object specific overrides
+            should_gzip = directives["gzip"]
+        except KeyError:
+            pass
+        if should_gzip:
+            headers["Content-Encoding"] = "gzip"
+            filepath = _compress_the_file(filepath)
+    try:
+        headers.update(directives["headers"])
+    except KeyError:
+        pass
+    bytes_written = key.set_contents_from_filename(filepath, headers=headers)
+    log.info("Uploaded '%s' (transmitted %d bytes)", destination_key,
+             bytes_written)
+    return bytes_written
 
 
 def upload_dir_to_s3(local_directory, bucket_name, access_key_id,

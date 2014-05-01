@@ -1,12 +1,13 @@
+# -*- coding: utf-8 -*-
 from unittest import TestCase, main
 from mock import patch, Mock
 from os.path import abspath
 from os import environ
 import gzip
 
-from s3sitedeploy import (_cache_control_for_filepath,  _list_all_files_in_dir,
-                          _upload_file_to_s3, _compress_the_file,
-                          extract_wercker_env_vars, _append_charset)
+from s3sitedeploy import (
+    _list_all_files_in_dir, _upload_file_to_s3, _compress_the_file,
+    extract_wercker_env_vars, _append_charset, _get_object_directives)
 
 
 class ExtractWerckerEnvVarsTestCase(TestCase):
@@ -17,96 +18,120 @@ class ExtractWerckerEnvVarsTestCase(TestCase):
         environ["WERCKER_S3SITEDEPLOY_BUCKET_NAME"] = "site.com-bucket-13819"
         environ["WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID"] = "fj2038fd*940$$F"
         environ["WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY"] = ")39dj1'1jfkd"
-
-    def test_correct_mappings(self):
-        expected = {
+        environ["WERCKER_S3SITEDEPLOY_LOG_LEVEL"] = "debug"
+        self.expected = {
             "source_dir": "/test/path",
             "deploy_dir": "public_html/",
             "bucket_name": "site.com-bucket-13819",
             "access_key_id": "fj2038fd*940$$F",
-            "secret_access_key": ")39dj1'1jfkd"
+            "secret_access_key": ")39dj1'1jfkd",
+            "log_level": "debug"
         }
-        self.assertEqual(expected, extract_wercker_env_vars())
 
-    def test_required_fields(self):
-        required = {"WERCKER_SOURCE_DIR", "WERCKER_S3SITEDEPLOY_BUCKET_NAME",
-                    "WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID",
-                    "WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY"}
-        for key in required:
-            del environ[key]
-            self.assertRaises(KeyError, extract_wercker_env_vars)
+    def test_correct_mappings_all_fields(self):
+        self.assertEqual(self.expected, extract_wercker_env_vars())
+
+    def test_required_field_source_dir(self):
+        del environ["WERCKER_SOURCE_DIR"]
+        self.assertRaises(KeyError, extract_wercker_env_vars)
+
+    def test_required_field_bucket_name(self):
+        del environ["WERCKER_S3SITEDEPLOY_BUCKET_NAME"]
+        self.assertRaises(KeyError, extract_wercker_env_vars)
+
+    def test_required_field_access_key_id(self):
+        del environ["WERCKER_S3SITEDEPLOY_ACCESS_KEY_ID"]
+        self.assertRaises(KeyError, extract_wercker_env_vars)
+
+    def test_required_field_secret_access_key(self):
+        del environ["WERCKER_S3SITEDEPLOY_SECRET_ACCESS_KEY"]
+        self.assertRaises(KeyError, extract_wercker_env_vars)
 
     def test_not_required_fields(self):
         del environ["WERCKER_S3SITEDEPLOY_DEPLOY_DIR"]
-        expected = {
-            "source_dir": "/test/path",
-            "bucket_name": "site.com-bucket-13819",
-            "access_key_id": "fj2038fd*940$$F",
-            "secret_access_key": ")39dj1'1jfkd"
-        }
-        self.assertEqual(expected, extract_wercker_env_vars())
+        del environ["WERCKER_S3SITEDEPLOY_LOG_LEVEL"]
+        del self.expected["deploy_dir"]
+        del self.expected["log_level"]
+        self.assertEqual(self.expected, extract_wercker_env_vars())
 
 
-class CacheControlForFilepathTestCase(TestCase):
+class GetObjectDirectivesTestCase(TestCase):
     def setUp(self):
-        self.default_cache_control = "max-age=60, public"
         self.conf = []
 
-    def assertIt(self, expected_cache_control, filepath):
+    def assertIt(self, expected_headers, object_path):
         return self.assertEqual(
-            expected_cache_control,
-            _cache_control_for_filepath(filepath, self.conf))
+            expected_headers,
+            _get_object_directives(object_path, self.conf))
 
     def test_no_config(self):
-        self.conf = []
-        self.assertIt(self.default_cache_control, "css/style.css")
+        self.assertIt(None, "css/style.css")
 
-    def test_catchall_wildcard(self):
-        self.conf = [{"path": r".*", "Cache-Control": "private, max-age=10"}]
-        self.assertIt("private, max-age=10", "test.txt")
-        self.assertIt("private, max-age=10", "images/10.jpg")
+    def test_catchall_wildcard_matches_everything(self):
+        self.conf = [{
+            "path": r".*",
+            "headers": {"Cache-Control": "max-age=10"}}]
+        expected = {"path": r".*", "headers": {"Cache-Control": "max-age=10"}}
+        self.assertIt(expected, "test.txt")
+        self.assertIt(expected, "images/10.jpg")
+        self.assertIt(expected, "style/unicode/£€¡.css")
 
-    def test_exact_match(self):
-        self.conf = [{"path": r"images/10.jpg", "Cache-Control": "no-cache"}]
-        self.assertIt("no-cache", "images/10.jpg")
-        self.assertIt(self.default_cache_control, "/images/10.jpg")
-        self.assertIt(self.default_cache_control, "css/style.css")
+    def test_exact_match_no_regex_use(self):
+        self.conf = [{"path": "images/£10.50.jpg",
+                      "headers": {"x-amz-storage-class": "RRS"}}]
+        expected = {"path": "images/£10.50.jpg",
+                    "headers": {"x-amz-storage-class": "RRS"}}
+        self.assertIt(expected, "images/£10.50.jpg")
+        self.assertIt(None, "/images/£10.50.jpg")
+        self.assertIt(None, "css/style.css")
 
-    def test_ordering_last_match_wins(self):
+    def test_ordering_first_match_wins(self):
+        self.conf = [{"path": r"images/10.jpg",
+                      "headers": {"Cache-Control": "max-age=15"}},
+                     {"path": r"images/.*",
+                      "headers": {"Cache-Control": "no-store"}},
+                     {"path": r".*",
+                      "headers": {"Cache-Control": "no-cache"}}]
+        self.assertIt({"path": r".*",
+                       "headers": {"Cache-Control": "no-cache"}},
+                      "test.txt")
+        self.assertIt({"path": r"images/.*",
+                       "headers": {"Cache-Control": "no-store"}},
+                      "images/test.jpg")
+        self.assertIt({"path": r"images/10.jpg",
+                       "headers": {"Cache-Control": "max-age=15"}},
+                      "images/10.jpg")
+
+    def test_example_full_use_case(self):
         self.conf = [
-            {"path": r".*", "Cache-Control": "no-cache"},
-            {"path": r"images/.*", "Cache-Control": "no-store"},
-            {"path": r"images/10.jpg", "Cache-Control": "max-age=15"},
-        ]
-        self.assertIt("no-cache", "test.txt")
-        self.assertIt("no-store", "images/test.jpg")
-        self.assertIt("max-age=15", "images/10.jpg")
-
-    def test_many_paths(self):
-        self.conf = [
-            {"path": r"^images/[0-3]+.jpg$", "Cache-Control": "no-store"},
-            {"path": r"images/99.jpg", "Cache-Control": "max-age=15"},
-            {"path": r".*css/.*", "Cache-Control": "no-cache"},
-        ]
-        self.assertIt("no-store", "images/123.jpg")
-        self.assertIt("no-store", "images/0.jpg")
-        self.assertIt("max-age=15", "images/99.jpg")
-        self.assertIt("max-age=15", "images/99.jpg")
-        self.assertIt(self.default_cache_control, "images/876.jpg")
-        self.assertIt(self.default_cache_control, "text/test.txt")
-        self.assertIt("no-cache", "/first/style/css/app.css")
-
-    def test_error_if_directive_with_no_path(self):
-        """ This is a build time tool, it should hardfail """
-        self.conf = [{"Cache-Control": "private, max-age=10"}]
-        self.assertRaises(KeyError, _cache_control_for_filepath,
-                          "test.txt", self.conf)
-
-    def test_error_if_directive_with_no_cache_control_gets_default(self):
-        """ This is a build time tool, it should hardfail """
-        self.conf = [{"path": r".*"}]
-        self.assertRaises(KeyError, _cache_control_for_filepath,
-                          "test.txt", self.conf)
+            {"path": r"^images/[0-3]+.jpg$",
+             "gzip": False,
+             "headers": {"Cache-Control": "no-store",
+                         "x-amz-storage-class": "RRS"}},
+            {"path": r"images/99.jpg",
+             "headers": {"Cache-Control": "max-age=15"},
+             "something_else": 1234},
+            {"path": r".*css/.*",
+             "headers": {"Cache-Control": "no-cache",
+                         "X-Example": "932.38"}}]
+        self.assertIt({"path": r"^images/[0-3]+.jpg$", "gzip": False,
+                       "headers": {"Cache-Control": "no-store",
+                                   "x-amz-storage-class": "RRS"}},
+                      "images/123.jpg")
+        self.assertIt({"path": r"^images/[0-3]+.jpg$", "gzip": False,
+                       "headers": {"Cache-Control": "no-store",
+                                   "x-amz-storage-class": "RRS"}},
+                      "images/0.jpg")
+        self.assertIt({"path": r"images/99.jpg",
+                       "headers": {"Cache-Control": "max-age=15"},
+                       "something_else": 1234},
+                      "images/99.jpg")
+        self.assertIt(None, "images/876.jpg")
+        self.assertIt(None, "text/test.txt")
+        self.assertIt({"path": r".*css/.*",
+                       "headers": {"Cache-Control": "no-cache",
+                                   "X-Example": "932.38"}},
+                      "/first/style/css/app.css")
 
 
 class AppendCharsetTestCase(TestCase):
@@ -183,7 +208,9 @@ class UploadFileToS3TestCase(TestCase):
     def setUp(self):
         self.mock_bucket = Mock()
         self.example_config = {
-            "headers": [{"path": r".*", "Cache-Control": "max-age=60"}],
+            "object_specific": [
+                {"path": r".*",
+                 "headers": {"Cache-Control": "max-age=60"}}],
             "gzip": ["text/html", "text/css", "text/plain",
                      "application/javascript"]}
 
@@ -231,6 +258,51 @@ class UploadFileToS3TestCase(TestCase):
             "x-amz-acl": "public-read",
             "Content-Type": "image/jpeg",
             "Cache-Control": "max-age=60"}
+        _upload_file_to_s3("tests/fixtures/example-image.jpg",
+                           self.mock_bucket, "example-image.jpg",
+                           self.example_config)
+        mock_key.assert_called_once_with(
+            bucket=self.mock_bucket, name="example-image.jpg")
+        mock_key.return_value.set_contents_from_filename.\
+            assert_called_once_with("tests/fixtures/example-image.jpg",
+                                    headers=expected_headers)
+
+    @patch("s3sitedeploy.Key")
+    def test_gzipping_not_performed_if_object_override(self, mock_key):
+        self.example_config = {
+            "object_specific": [
+                {"path": r".*",
+                 "gzip": False}],
+            "gzip": ["text/html", "text/css", "text/plain",
+                     "application/javascript"]}
+        expected_headers = {
+            "x-amz-acl": "public-read",
+            "Content-Type": "text/html; charset=UTF-8",
+            "Cache-Control": "no-cache"}
+        _upload_file_to_s3(
+            "tests/fixtures/webpage-without-compression.html",
+            self.mock_bucket, "webpage-without-compression.html",
+            self.example_config)
+        mock_key.assert_called_once_with(
+            bucket=self.mock_bucket, name="webpage-without-compression.html")
+        mock_key.return_value.set_contents_from_filename.\
+            assert_called_once_with(
+                "tests/fixtures/webpage-without-compression.html",
+                headers=expected_headers)
+
+    @patch("s3sitedeploy.Key")
+    def test_header_overrides_honoured(self, mock_key):
+        self.example_config = {
+            "object_specific": [
+                {"path": r".*",
+                 "headers": {"Cache-Control": "private, max-age=10",
+                             "x-amz-acl": "public-dance"}}],
+            "gzip": ["text/html", "text/css", "text/plain",
+                     "application/javascript"]}
+        expected_headers = {
+            "x-amz-acl": "public-dance",
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "private, max-age=10"}
         _upload_file_to_s3("tests/fixtures/example-image.jpg",
                            self.mock_bucket, "example-image.jpg",
                            self.example_config)
