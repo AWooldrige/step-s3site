@@ -1,0 +1,17 @@
+{
+    "object_specific": [
+        {
+            "path": ".*",
+            "headers": { "Cache-Control": "max-age=3600" },
+            "gzip": false
+        },
+        {
+            "path": "^recipe/.*",
+            "headers": { "Cache-Control": "max-age=3600" }
+        }
+    ],
+    "gzip_mimetypes": [
+        "text/html", "text/css", "text/plain", "text/yaml",
+        "application/javascript"
+    ]
+}

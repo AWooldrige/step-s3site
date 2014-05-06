@@ -4,10 +4,12 @@ from mock import patch, Mock
 from os.path import abspath
 from os import environ
 import gzip
+from jsonschema import ValidationError
 
 from s3sitedeploy import (
     _list_all_files_in_dir, _upload_file_to_s3, _compress_the_file,
-    extract_wercker_env_vars, _append_charset, _get_object_directives)
+    extract_wercker_env_vars, _append_charset, _get_object_directives,
+    _get_s3site_config)
 
 
 class ExtractWerckerEnvVarsTestCase(TestCase):
@@ -164,6 +166,11 @@ class ListAllFilesInDirTestCase(TestCase):
         self.assertEquals(set([]), _list_all_files_in_dir(
             "tests/fixtures/empty-project/"))
 
+    def test_s3siteconfig_not_returned(self):
+        files = _list_all_files_in_dir(
+            "tests/fixtures/example-multi-depth-project/")
+        self.assertTrue("s3sitedeploy.json" not in files)
+
     def test_multi_depth_project(self):
         expected = {"index.html",
                     "text/poem.txt",
@@ -311,6 +318,27 @@ class UploadFileToS3TestCase(TestCase):
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with("tests/fixtures/example-image.jpg",
                                     headers=expected_headers)
+
+
+class GetS3siteConfigTestCase(TestCase):
+
+    def test_read_correctly(self):
+        expected = {
+            "object_specific": [
+                {"path": r".*",
+                 "headers": {"Cache-Control": "max-age=3600"},
+                 "gzip": False},
+                {"path": r"^recipe/.*",
+                 "headers": {"Cache-Control": "max-age=3600"}}],
+            "gzip_mimetypes": ["text/html", "text/css", "text/plain",
+                               "text/yaml", "application/javascript"]}
+        config = _get_s3site_config(
+            "tests/fixtures/example-multi-depth-project/")
+        self.assertEquals(expected, config)
+
+    def test_config_is_validated_against_schema(self):
+        self.assertRaises(ValidationError, _get_s3site_config,
+                          "tests/fixtures/invalid-s3sitedeploy-json/")
 
 
 if __name__ == '__main__':

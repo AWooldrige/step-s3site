@@ -5,11 +5,14 @@ from json import load
 from mimetypes import guess_type
 import gzip
 from re import compile
+from jsonschema import validate
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
 log = logging.getLogger(__name__)
+
+CONFIG_FILENAME = "s3sitedeploy.json"
 
 
 def extract_wercker_env_vars():
@@ -33,22 +36,27 @@ def extract_wercker_env_vars():
     return extracted
 
 
+def _validate_s3sitedeploy_json(json):
+    with open("s3sitedeploy.schema.json") as schema_file:
+        return validate(json, load(schema_file)) is None
+
+
 def _list_all_files_in_dir(dir):
     return {relpath(join(dp, f), dir)
             for dp, _, fn in walk(dir)
             for f in fn
-            if isfile(join(dp, f))}
+            if isfile(join(dp, f))} - {CONFIG_FILENAME}
 
 
 def _get_s3site_config(dir):
-    try:
-        with open(join(dir, "s3sitedeploy.json")) as config:
-            return load(config)
-    except IOError:
-        return {
-            "headers": [{"path": r".*", "Cache-Control": "max-age=60"}],
-            "gzip": ["text/html", "text/css", "text/plain",
-                     "application/javascript"]}
+    with open(join(dir, CONFIG_FILENAME)) as config:
+        try:
+            decoded = load(config)
+        except ValueError:
+            log.exception("%s possibly not valid JSON", CONFIG_FILENAME)
+            raise
+        if _validate_s3sitedeploy_json(decoded):
+            return decoded
 
 
 def _append_charset(content_type):

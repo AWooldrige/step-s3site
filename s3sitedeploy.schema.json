@@ -1,0 +1,43 @@
+{
+    "title": "Schema for s3sitedeploy configuration files",
+    "type": "object",
+    "properties": {
+        "object_specific": {
+            "description": "A list of directives to apply to certain paths",
+            "type": "array",
+            "items": {
+                "description": "A directive must include the path property",
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "description": "A regular expression matching a filepath",
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "headers": {
+                        "type": "object",
+                        "description": "Headers to override when PUTing to S3",
+                        "patternProperties": {
+                            "^.+$": { "type": "string" }
+                        },
+                        "additionalProperties": false
+                    },
+                    "gzip": {
+                        "description": "Override gzipping on a object basis",
+                        "type": "boolean"
+                    }
+                },
+                "required": ["path"],
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "gzip_mimetypes": {
+            "description": "A list of mimetypes that will get gzipped",
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+        }
+    },
+    "additionalProperties": false
+}
