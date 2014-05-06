@@ -108,7 +108,7 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
     if content_encoding:
         headers["Content-Encoding"] = content_encoding
     else:
-        should_gzip = content_type in site_config["gzip"]
+        should_gzip = content_type in site_config["gzip_mimetypes"]
         try:
             # Allow for object specific overrides
             should_gzip = directives["gzip"]
