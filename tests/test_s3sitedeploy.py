@@ -218,8 +218,8 @@ class UploadFileToS3TestCase(TestCase):
             "object_specific": [
                 {"path": r".*",
                  "headers": {"Cache-Control": "max-age=60"}}],
-            "gzip": ["text/html", "text/css", "text/plain",
-                     "application/javascript"]}
+            "gzip_mimetypes": ["text/html", "text/css", "text/plain",
+                               "application/javascript"]}
 
     @patch("s3sitedeploy.Key")
     @patch("s3sitedeploy._compress_the_file")
@@ -280,8 +280,8 @@ class UploadFileToS3TestCase(TestCase):
             "object_specific": [
                 {"path": r".*",
                  "gzip": False}],
-            "gzip": ["text/html", "text/css", "text/plain",
-                     "application/javascript"]}
+            "gzip_mimetypes": ["text/html", "text/css", "text/plain",
+                               "application/javascript"]}
         expected_headers = {
             "x-amz-acl": "public-read",
             "Content-Type": "text/html; charset=UTF-8",
@@ -304,8 +304,8 @@ class UploadFileToS3TestCase(TestCase):
                 {"path": r".*",
                  "headers": {"Cache-Control": "private, max-age=10",
                              "x-amz-acl": "public-dance"}}],
-            "gzip": ["text/html", "text/css", "text/plain",
-                     "application/javascript"]}
+            "gzip_mimetypes": ["text/html", "text/css", "text/plain",
+                               "application/javascript"]}
         expected_headers = {
             "x-amz-acl": "public-dance",
             "Content-Type": "image/jpeg",
