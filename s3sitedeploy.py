@@ -7,6 +7,9 @@ import gzip
 from re import compile
 from jsonschema import validate
 
+from multiprocessing.dummy import Pool as ThreadPool
+
+
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
@@ -127,16 +130,24 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
     return bytes_written
 
 
-def upload_dir_to_s3(local_directory, bucket_name, access_key_id,
-                     secret_access_key):
-    conn = S3Connection(access_key_id, secret_access_key)
-    s3_bucket = conn.get_bucket(bucket_name)
+def parallel_upload_dir_to_s3(local_directory, bucket_name, access_key_id,
+                              secret_access_key):
     config = _get_s3site_config(local_directory)
     files = _list_all_files_in_dir(local_directory)
-    for filepath in files:
-        _upload_file_to_s3(join(local_directory, filepath), s3_bucket,
-                           filepath, config)
 
+    def _threadsafe_upload_file_to_s3(filepath):
+        try:
+            conn = S3Connection(access_key_id, secret_access_key)
+            s3_bucket = conn.get_bucket(bucket_name)
+            _upload_file_to_s3(join(local_directory, filepath), s3_bucket,
+                               filepath, config)
+            return True
+        except:
+            log.exception("Could not upload file %s", filepath)
+            return False
+    pool = ThreadPool(10)
+    results = pool.map(_threadsafe_upload_file_to_s3, files)
+    return all(results)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
@@ -145,5 +156,6 @@ if __name__ == "__main__":
         local_directory = join(e["source_dir"], e["deploy_dir"])
     except KeyError:
         local_directory = e["source_dir"]
-    upload_dir_to_s3(local_directory, e["bucket_name"], e["access_key_id"],
-                     e["secret_access_key"])
+    parallel_upload_dir_to_s3(
+        local_directory, e["bucket_name"], e["access_key_id"],
+        e["secret_access_key"])
