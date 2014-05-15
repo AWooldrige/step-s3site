@@ -340,6 +340,10 @@ class GetS3siteConfigTestCase(TestCase):
         self.assertRaises(ValidationError, _get_s3site_config,
                           "tests/fixtures/invalid-s3sitedeploy-json/")
 
+    def test_default_returned_if_file_doesnt_exist(self):
+        config = _get_s3site_config("test/fixtures/DoesNtExiSt")
+        self.assertEquals({}, config)
+
 
 if __name__ == '__main__':
     main()

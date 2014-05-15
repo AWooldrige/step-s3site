@@ -52,14 +52,19 @@ def _list_all_files_in_dir(dir):
 
 
 def _get_s3site_config(dir):
-    with open(join(dir, CONFIG_FILENAME)) as config:
-        try:
-            decoded = load(config)
-        except ValueError:
-            log.exception("%s possibly not valid JSON", CONFIG_FILENAME)
-            raise
-        if _validate_s3sitedeploy_json(decoded):
-            return decoded
+    config_filepath = join(dir, CONFIG_FILENAME)
+    try:
+        with open(config_filepath) as config:
+            try:
+                decoded = load(config)
+            except ValueError:
+                log.exception("%s possibly not valid JSON", CONFIG_FILENAME)
+                raise
+            if _validate_s3sitedeploy_json(decoded):
+                return decoded
+    except IOError:
+        log.exception("Could not find configuration file %s", config_filepath)
+        return {}
 
 
 def _append_charset(content_type):
@@ -102,8 +107,9 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
     content_type, content_encoding = guess_type(filepath)
     log.debug("Guessed content type '%s' and encoding '%s' for '%s'",
               content_type, content_encoding, filepath)
+    # TODO: Add test around this
     directives = _get_object_directives(destination_key,
-                                        site_config["object_specific"])
+                                        site_config.get("object_specific", []))
     headers = {
         "x-amz-acl": "public-read",
         "Content-Type": _append_charset(content_type),
@@ -111,18 +117,19 @@ def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
     if content_encoding:
         headers["Content-Encoding"] = content_encoding
     else:
-        should_gzip = content_type in site_config["gzip_mimetypes"]
+        # TODO: Add test around this
+        should_gzip = content_type in site_config.get("gzip_mimetypes", [])
         try:
             # Allow for object specific overrides
             should_gzip = directives["gzip"]
-        except KeyError:
+        except (KeyError, TypeError):
             pass
         if should_gzip:
             headers["Content-Encoding"] = "gzip"
             filepath = _compress_the_file(filepath)
     try:
         headers.update(directives["headers"])
-    except KeyError:
+    except (KeyError, TypeError):
         pass
     bytes_written = key.set_contents_from_filename(filepath, headers=headers)
     log.info("Uploaded '%s' (transmitted %d bytes)", destination_key,
@@ -136,17 +143,23 @@ def parallel_upload_dir_to_s3(local_directory, bucket_name, access_key_id,
     files = _list_all_files_in_dir(local_directory)
 
     def _threadsafe_upload_file_to_s3(filepath):
-        try:
+        def _attempt_upload():
             conn = S3Connection(access_key_id, secret_access_key)
             s3_bucket = conn.get_bucket(bucket_name)
             _upload_file_to_s3(join(local_directory, filepath), s3_bucket,
                                filepath, config)
             return True
-        except:
-            log.exception("Could not upload file %s", filepath)
-            return False
+        for attempt in range(1, 5):
+            log.debug("Uploading %s (attempt %s)", filepath, attempt)
+            try:
+                return _attempt_upload()
+            except:
+                log.exception("Could not upload file %s", filepath)
+        return False
     pool = ThreadPool(10)
     results = pool.map(_threadsafe_upload_file_to_s3, files)
+    pool.close()
+    pool.join()
     return all(results)
 
 if __name__ == "__main__":

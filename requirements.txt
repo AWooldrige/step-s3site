@@ -3,3 +3,4 @@ mock
 nose
 flake8
 jsonschema
+moto
