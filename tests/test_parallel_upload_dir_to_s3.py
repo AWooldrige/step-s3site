@@ -35,14 +35,15 @@ class ParallelUploadDirToS3TestCase(TestCase):
         for i in range(1, 500):
             example_file = join(self.temp_dir, str(i) + ".txt")
             with open(example_file, "w") as f:
-                f.write("test")
+                f.write("test of this \n thing")
         conn = boto.connect_s3()
         conn.create_bucket(self.bucket_name)
         status = parallel_upload_dir_to_s3(self.temp_dir, self.bucket_name,
                                            "dkf20fj", "3jf9d0sf")
         self.assertTrue(status)
         bucket = conn.get_bucket(self.bucket_name)
-        self.assertEquals("test", bucket.get_key("1.txt").read())
+        self.assertEquals("test of this \n thing",
+                          bucket.get_key("1.txt").read())
 
 
 if __name__ == '__main__':

@@ -235,8 +235,8 @@ class UploadFileToS3TestCase(TestCase):
             "tests/fixtures/webpage-without-compression.html",
             self.mock_bucket, "webpage-without-compression.html",
             self.example_config)
-        mock_key.assert_called_once_with(
-            bucket=self.mock_bucket, name="webpage-without-compression.html")
+        mock_key.assert_called_once_with(self.mock_bucket)
+        mock_key.key.assertEquals("webpage-without-compression.html")
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with("example-file.gz",
                                     headers=expected_headers)
@@ -252,8 +252,8 @@ class UploadFileToS3TestCase(TestCase):
             "tests/fixtures/webpage-with-compression.html.gz",
             self.mock_bucket, "webpage-with-compression.html.gz",
             self.example_config)
-        mock_key.assert_called_once_with(
-            bucket=self.mock_bucket, name="webpage-with-compression.html.gz")
+        mock_key.assert_called_once_with(self.mock_bucket)
+        mock_key.key.assertEquals("webpage-without-compression.html.gz")
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with(
                 "tests/fixtures/webpage-with-compression.html.gz",
@@ -268,8 +268,8 @@ class UploadFileToS3TestCase(TestCase):
         _upload_file_to_s3("tests/fixtures/example-image.jpg",
                            self.mock_bucket, "example-image.jpg",
                            self.example_config)
-        mock_key.assert_called_once_with(
-            bucket=self.mock_bucket, name="example-image.jpg")
+        mock_key.assert_called_once_with(self.mock_bucket)
+        mock_key.key.assertEquals("example-image.jpg")
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with("tests/fixtures/example-image.jpg",
                                     headers=expected_headers)
@@ -290,8 +290,8 @@ class UploadFileToS3TestCase(TestCase):
             "tests/fixtures/webpage-without-compression.html",
             self.mock_bucket, "webpage-without-compression.html",
             self.example_config)
-        mock_key.assert_called_once_with(
-            bucket=self.mock_bucket, name="webpage-without-compression.html")
+        mock_key.assert_called_once_with(self.mock_bucket)
+        mock_key.key.assertEquals("webpage-without-compression.html")
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with(
                 "tests/fixtures/webpage-without-compression.html",
@@ -313,8 +313,8 @@ class UploadFileToS3TestCase(TestCase):
         _upload_file_to_s3("tests/fixtures/example-image.jpg",
                            self.mock_bucket, "example-image.jpg",
                            self.example_config)
-        mock_key.assert_called_once_with(
-            bucket=self.mock_bucket, name="example-image.jpg")
+        mock_key.assert_called_once_with(self.mock_bucket)
+        mock_key.key.assertEquals("example-image.jpg")
         mock_key.return_value.set_contents_from_filename.\
             assert_called_once_with("tests/fixtures/example-image.jpg",
                                     headers=expected_headers)

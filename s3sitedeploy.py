@@ -103,7 +103,8 @@ def _get_object_directives(object_path, object_specific_config):
 
 
 def _upload_file_to_s3(filepath, bucket, destination_key, site_config):
-    key = Key(bucket=bucket, name=destination_key)
+    key = Key(bucket)
+    key.key = destination_key
     content_type, content_encoding = guess_type(filepath)
     log.debug("Guessed content type '%s' and encoding '%s' for '%s'",
               content_type, content_encoding, filepath)
@@ -154,7 +155,8 @@ def parallel_upload_dir_to_s3(local_directory, bucket_name, access_key_id,
             try:
                 return _attempt_upload()
             except:
-                log.exception("Could not upload file %s", filepath)
+                log.exception("Could not upload file %s after %s attempts",
+                              filepath, attempt)
         return False
     pool = ThreadPool(10)
     results = pool.map(_threadsafe_upload_file_to_s3, files)
