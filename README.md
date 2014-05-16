@@ -41,27 +41,27 @@ The following example configuration:
  * Sets an easter egg header on a certain article
  * Sets all HTML pages, stylesheets and JavaScript to be gzipped automatically
 
-
-    {
-        "object_specific": [
-            {
-                "path": ".*",
-                "headers": { "Cache-Control": "max-age=180" }
-            },
-            {
-                "path": "^assets/.*",
-                "headers": { "Cache-Control": "max-age=31104000" }
-            },
-            {
-                "path": "^news/2014/how-to/index\.html*",
-                "headers": {
-                    "X-Easter-Egg": "found",
-                    "Cache-Control": "private, max-age=10"
-                }
-            },
-        ],
-        "gzip_mimetypes": [
-            "text/html", "text/css", "application/javascript"
-        ]
-    }
-
+```
+{
+    "object_specific": [
+        {
+            "path": ".*",
+            "headers": { "Cache-Control": "max-age=180" }
+        },
+        {
+            "path": "^assets/.*",
+            "headers": { "Cache-Control": "max-age=31104000" }
+        },
+        {
+            "path": "^news/2014/how-to/index\.html*",
+            "headers": {
+                "X-Easter-Egg": "found",
+                "Cache-Control": "private, max-age=10"
+            }
+        },
+    ],
+    "gzip_mimetypes": [
+        "text/html", "text/css", "application/javascript"
+    ]
+}
+```
