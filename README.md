@@ -41,6 +41,7 @@ The following example configuration:
  * Sets an easter egg header on a certain article
  * Sets all HTML pages, stylesheets and JavaScript to be gzipped automatically
 
+
     {
         "object_specific": [
             {
@@ -63,3 +64,4 @@ The following example configuration:
             "text/html", "text/css", "application/javascript"
         ]
     }
+
