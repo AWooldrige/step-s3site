@@ -3,10 +3,10 @@ build:
   steps:
     - script:
         name: Upgrade pip
-        code: pip install --upgrade pip
+        code: sudo pip install --upgrade pip
     - script:
         name: Upgrade setuptools
-        code: pip install --upgrade setuptools
+        code: sudo pip install --upgrade setuptools
     - pip-install
     - script:
         name: s3sitedeploy Tests
