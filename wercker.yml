@@ -1,6 +1,8 @@
 box: wercker/python
 build:
   steps:
+    - pip install --upgrade pip
+    - pip install --upgrade setuptools
     - pip-install
     - script:
         name: s3sitedeploy Tests
