@@ -4,9 +4,6 @@ build:
     - script:
         name: Upgrade pip
         code: sudo pip install --upgrade pip
-    - script:
-        name: Upgrade setuptools
-        code: sudo pip install --upgrade setuptools
     - pip-install
     - script:
         name: s3sitedeploy Tests
